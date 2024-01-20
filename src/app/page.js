@@ -61,7 +61,7 @@ export default function Home() {
 
   const [signerAddress, setSignerAddress] = useState(null);
 
-  const [balances, setBalances] = useState({});
+  const [balances, setBalances] = useState({insuranceCompanyBalance: 0, insuranceLockedBalance: 0});
   const [insuranceTypes, setInsuranceTypes] = useState({});
   const [insurances, setInsurances] = useState([]);
   const [userInsurances, setUserInsurances] = useState([]);
@@ -99,7 +99,7 @@ export default function Home() {
     // get balances
     const insuranceCompanyBalance = getFormatedBalance(await insuranceContract.getBalance());
     const insuranceLockedBalance = getFormatedBalance(await insuranceContract.getLockedBalance());
-    setBalances({ ...balances, insuranceCompanyBalance, insuranceLockedBalance });
+    setBalances({ insuranceCompanyBalance, insuranceLockedBalance });
 
     // assemble insurance types
     const typesCount = await insuranceContract.getTypesCount();
@@ -274,7 +274,7 @@ export default function Home() {
 
     finalFormRef.current.classList.add("hidden");
     loadingScreenRef.current.classList.remove("hidden");
-    const tx = await contract.createInsurance(type, data, dateInSecs, claimer, amount, { value: ethers.utils.parseUnits(`${getPrice(amount)}`, "ether") });
+    const tx = await contract.createInsurance(type, data, dateInSecs, claimer, ethers.utils.formatUnits(amount, 'wei') * 1_000_000_000, { value: ethers.utils.parseUnits(`${getPrice(amount)}`, "ether") });
     await tx.wait();
 
     const insuranceCompanyBalance = getFormatedBalance(await contract.getBalance());
@@ -615,7 +615,7 @@ export default function Home() {
                     <label className='
         px-4 transition-colors z-50
         '>Max settlement amount: </label>
-                    <b>{getFormatedBalance(ethers.utils.parseUnits(`${insurance.maxCoverageAmount}`, 'ether'))}</b>
+                    <b>{getFormatedBalance(ethers.utils.parseUnits(`${insurance.maxCoverageAmount}`, 'gwei'))}</b>
                   </div>
                   <div className='flex justify-between items-center w-full my-1'>
                     <label className='
