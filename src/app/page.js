@@ -643,8 +643,7 @@ export default function Home() {
                     <b>{insuranceStatus[insurance.status]}</b>
                   </div>
 
-
-                  <div className='flex justify-end'>
+                  {insurance.status == 1 && <div className='flex justify-end'>
                     <button
                       onClick={handleSubmit}
                       className='
@@ -653,7 +652,7 @@ export default function Home() {
                     >
                       Submit a claim
                     </button>
-                  </div>
+                  </div>}
 
                 </div>
               )
