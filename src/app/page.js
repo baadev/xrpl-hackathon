@@ -1,5 +1,6 @@
 "use client"
 
+import $ from 'jquery'
 import 'flowbite'
 import { ethers } from "ethers";
 import jazzicon from "@metamask/jazzicon"
@@ -9,7 +10,7 @@ import Image from "next/image";
 
 import insuranceData from './insurance.data';
 
-const contractAddress = "0x73078cb16de4e38d78795d4d859aba776109f968";
+const contractAddress = "0xB4Ea46f13a74998C6d52efB215D3F380a099Ae3f";
 const insuranceAbi = require("../../abi.json");
 
 const getFormatedBalance = (balance, precision = 2) => {
@@ -83,6 +84,7 @@ export default function Home() {
   const claimerRef = useRef(null);
   const finalFormRef = useRef(null);
   const submissionsRef = useRef(null);
+  const loadingScreenRef = useRef(null);
 
   const initApp = async () => {
 
@@ -221,7 +223,7 @@ export default function Home() {
       expirityDate.setSeconds(expirityDate.getSeconds() + timeToTimestamp[value]);
 
       setApplication({ ...application, duration: expirityDate });
-  
+
       nextStepHandler = () => {
         insuranceDurationRef.current.classList.add("hidden");
 
@@ -270,6 +272,8 @@ export default function Home() {
 
     const dateInSecs = Math.floor(duration.getTime() / 1000);
 
+    finalFormRef.current.classList.add("hidden");
+    loadingScreenRef.current.classList.remove("hidden");
     const tx = await contract.createInsurance(type, data, dateInSecs, claimer, amount, { value: ethers.utils.parseUnits(`${getPrice(amount)}`, "ether") });
     await tx.wait();
 
@@ -277,11 +281,17 @@ export default function Home() {
     const insuranceLockedBalance = getFormatedBalance(await contract.getLockedBalance());
     setBalances({ ...balances, insuranceCompanyBalance, insuranceLockedBalance });
 
-    finalFormRef.current.classList.add("hidden");
     setApplication({});
-    alert('success');
+    alert("Insurance application was submited successfully!");
+    loadingScreenRef.current.classList.add("hidden");
+    applicationFormRef.current.classList.add("hidden");
+
+    handleSubmissionsButtonClick();
   }
   const handleSubmissionsButtonClick = async () => {
+
+    $('#dropdownInformation').hide()
+
     finalFormRef.current.classList.add("hidden");
     applicationFormRef.current.classList.add("hidden");
 
@@ -297,7 +307,7 @@ export default function Home() {
   }
 
   const getPrice = (amount) => {
-    return (amount / 25) * ((timeFactor + 1) / (40*timeFactor));
+    return Math.abs(amount * ((timeFactor + 1) / -(20 * (timeFactor + 1))));
   }
 
   useEffect(() => {
@@ -366,10 +376,10 @@ export default function Home() {
             </div>
             <ul className="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownInformationButton">
               <li>
-                <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Dashboard</a>
+                <a href="#" onClick={handleSubmissionsButtonClick} className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Dashboard</a>
               </li>
               <li>
-                <a href="#" onClick={handleSubmissionsButtonClick} className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Claims</a>
+                <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Claims</a>
               </li>
               <li>
                 <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Settings</a>
@@ -383,6 +393,7 @@ export default function Home() {
       </div>
 
       <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-10 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-20">
+        {/* CONNECT WALLET */}
         <div
           className="hidden rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer"
           onClick={connectWallet}
@@ -396,7 +407,7 @@ export default function Home() {
           </h2>
         </div>
 
-
+        {/* APPLICATION FORM */}
         <div
           className="hidden sm:min-w-96 rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
           ref={applicationFormRef}
@@ -500,69 +511,85 @@ export default function Home() {
           </div>
         </div>
 
+        {/* FINAL FORM */}
         <div
           className="hidden sm:min-w-max rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
           ref={finalFormRef}
         >
-        <h2 className={`text-2xl font-semibold`}>
-          Confirm insurance application
-          <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-            -&gt;
-          </span>
-        </h2>
+          <h2 className={`text-2xl font-semibold`}>
+            Confirm insurance application
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
 
-        <div className='font-mono mt-8 my-4'>
-          <div className='flex justify-between items-center my-1'>
-            <span className='
+          <div className='font-mono mt-8 my-4'>
+            <div className='flex justify-between items-center my-1'>
+              <span className='
         px-4 transition-colors z-50
         '>Insurance type: </span><b>{insuranceTypes[application.type]}</b>
-          </div>
-          <div className='flex justify-between items-center my-1'>
-            <label className='
+            </div>
+            <div className='flex justify-between items-center my-1'>
+              <label className='
         px-4 transition-colors z-50
         '>{insuranceData[application.type]?.data}</label><b>{application.data}</b>
-          </div>
-          <div className='flex justify-between items-center my-1'>
-            <label className='
+            </div>
+            <div className='flex justify-between items-center my-1'>
+              <label className='
         px-4 transition-colors z-50
         '>Amount in XRP: </label><b>{application.amount}</b>
-          </div>
-          <div className='flex justify-between items-center my-1'>
-            <label className='
+            </div>
+            <div className='flex justify-between items-center my-1'>
+              <label className='
         px-4 transition-colors z-50
         '>Price in XRP: </label><b>{getPrice(application.amount)}</b>
-          </div>
-          <div className='flex justify-between items-center my-1'>
-            <label className='
+            </div>
+            <div className='flex justify-between items-center my-1'>
+              <label className='
         px-4 transition-colors z-50
         '>Insurance duration: </label><b>{application.duration?.toLocaleDateString()}</b>
-          </div>
-          <div className='flex justify-between items-center my-1'>
-            <label className='
+            </div>
+            <div className='flex justify-between items-center my-1'>
+              <label className='
         px-4 transition-colors z-50
         '>Address of claimer in case of insurable event: </label><b>{application.claimer}</b>
+            </div>
           </div>
-        </div>
 
-        <div className='flex justify-end'>
-          <button
-            onClick={handleSubmit}
-            className='
+          <div className='flex justify-end'>
+            <button
+              onClick={handleSubmit}
+              className='
                 rounded-lg border mt-4 px-4 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer
               '
-          >
-            Submit
-          </button>
-        </div>
+            >
+              Submit
+            </button>
+          </div>
 
         </div>
 
+
+        {/* LOADING SCREEN */}
+        <div
+          className="hidden sm:min-w-max rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
+          ref={loadingScreenRef}
+        >
+          <h2 className={`text-2xl font-semibold`}>
+            Loading...
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+        </div>
+
+        {/* SUBMISSIONS */}
         <div
           className="hidden  rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
           ref={submissionsRef}
         >
           <h2 className={`text-2xl font-semibold`}>
-            Submissions
+            Submited insurances
             <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
               -&gt;
             </span>
