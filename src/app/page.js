@@ -1,6 +1,5 @@
 "use client"
 
-import $ from 'jquery'
 import 'flowbite'
 import { ethers } from "ethers";
 import jazzicon from "@metamask/jazzicon"
@@ -85,6 +84,7 @@ export default function Home() {
   const finalFormRef = useRef(null);
   const submissionsRef = useRef(null);
   const loadingScreenRef = useRef(null);
+  const dropdownInformationRef = useRef(null);
 
   const initApp = async () => {
 
@@ -290,7 +290,7 @@ export default function Home() {
   }
   const handleSubmissionsButtonClick = async () => {
 
-    $('#dropdownInformation').hide()
+    dropdownInformationRef.current.classList.add("hidden");
 
     finalFormRef.current.classList.add("hidden");
     applicationFormRef.current.classList.add("hidden");
@@ -370,7 +370,7 @@ export default function Home() {
             data-dropdown-toggle="dropdownInformation"
             type="button"
           ></button>
-          <div id="dropdownInformation" className="hidden z-10 rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 divide-y divide-gray-100 shadow w-44  dark:divide-gray-600">
+          <div id="dropdownInformation" ref={dropdownInformationRef} className="hidden z-10 rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 divide-y divide-gray-100 shadow w-44  dark:divide-gray-600">
             <div className="px-4 py-3 text-sm text-gray-900 dark:text-white">
               <div className="font-medium truncate">{signerAddress}</div>
             </div>
