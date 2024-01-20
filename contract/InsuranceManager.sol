@@ -82,24 +82,27 @@ contract InsuranceManager is Ownable {
 
     // Verified accounts methods
 
-    function makePayment(uint index, uint value) external {
+    // Bullshit
+    function makePayment(uint index, uint value) external payable {
         require(
             isVerified(msg.sender),
             "Access denied. Only for verified accounts"
         );
         Insurance storage insurance = insurances[index];
-        if (insurance.payedAmount >= value) {
-            insurance.payedAmount -= value;
+        if (insurance.maxCoverageAmount - insurance.payedAmount >= value) {
+            insurance.payedAmount += value;
+            lockedValue -= value;
             (bool sent, ) = insurance.receiver.call{value: value}("insurance payment");
             require(sent, "Failed to send Ether");
             emit Payed(index, value);
         } else {
-            uint payedAmount = insurance.payedAmount;
-            insurance.payedAmount = 0;
+            uint payValue = insurance.maxCoverageAmount - insurance.payedAmount;
+            insurance.payedAmount += payValue;
+            lockedValue -= payValue;
             insurance.status = 2;
-            (bool sent, ) = insurance.receiver.call{value: payedAmount}("insurance payment");
+            (bool sent, ) = insurance.receiver.call{value: payValue}("insurance payment");
             require(sent, "Failed to send Ether");
-            emit Payed(index, value);
+            emit Payed(index, payValue);
         }
     }
 
@@ -109,6 +112,7 @@ contract InsuranceManager is Ownable {
             "Access denied. Only for verified accounts"
         );
         Insurance storage insurance = insurances[index];
+        lockedValue += insurance.maxCoverageAmount;
         require(
             address(this).balance - lockedValue > insurance.maxCoverageAmount,
             "Not enough available balance"
@@ -152,13 +156,17 @@ contract InsuranceManager is Ownable {
 
     // Getters
 
-    function getStatus(uint index) external view returns (uint16) {
-        if (insurances[index].expirityDate > block.timestamp) {
-            return 3;
-        }
-        return insurances[index].status;
+    // Get Insurances
+
+    function getInsurance(uint index) external view returns (Insurance memory) {
+        return insurances[index]; // not correct status if expired
     }
 
+    function getInsurancesCount() external view returns (uint) {
+        return insuranceCount;
+    }
+
+    // Get types
     function getType(uint32 index) external view returns (string memory) {
         return insuranceTypes[index];
     }
@@ -167,6 +175,7 @@ contract InsuranceManager is Ownable {
         return typeCount;
     }
 
+    // Get Balances
     function getLockedBalance() external view returns (uint256) {
         return lockedValue; // 0,000000001
     }
@@ -179,7 +188,15 @@ contract InsuranceManager is Ownable {
         return address(this).balance;
     }
 
+    // Another gets
     function getVerifiedAdresses() external view returns (address[] memory) {
         return verifiedAdresses;
+    }
+
+    function getStatus(uint index) external view returns (uint16) {
+        if (insurances[index].expirityDate > block.timestamp) {
+            return 3;
+        }
+        return insurances[index].status;
     }
 } 

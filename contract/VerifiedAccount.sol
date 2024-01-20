@@ -21,7 +21,7 @@ contract VerifiedAccount is Ownable {
         insuranceManager.rejectInsurance(index);
     }
 
-    function pay(uint index, uint value) external onlyOwner {
+    function pay(uint index, uint value) external payable onlyOwner {
         insuranceManager.makePayment(index, value);
     }
 }
