@@ -1,0 +1,13 @@
+[Unit]
+Description=xrpl.mosaica
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Restart=always
+RestartSec=10
+WorkingDirectory=/home/development/www/xrpl.mosaica.space
+ExecStart=/root/.nvm/versions/node/v18.19.0/bin/npm run start
+
+[Install]
+WantedBy=multi-user.target
