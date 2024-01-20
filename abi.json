@@ -145,6 +145,19 @@
     {
         "inputs": [
             {
+                "internalType": "address[]",
+                "name": "addresses",
+                "type": "address[]"
+            }
+        ],
+        "name": "changeVerifiedAccounts",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "uint32",
                 "name": "insuranceType",
                 "type": "uint32"
@@ -156,12 +169,12 @@
             },
             {
                 "internalType": "uint256",
-                "name": "expired",
+                "name": "expirityDate",
                 "type": "uint256"
             },
             {
                 "internalType": "address",
-                "name": "claimer",
+                "name": "receiver",
                 "type": "address"
             },
             {
@@ -170,7 +183,7 @@
                 "type": "uint256"
             }
         ],
-        "name": "createNewInsurance",
+        "name": "createInsurance",
         "outputs": [],
         "stateMutability": "payable",
         "type": "function"

@@ -9,7 +9,7 @@ import Image from "next/image";
 
 import insuranceData from './insurance.data';
 
-const contractAddress = "0x393c9fac96e4f72798da03185834a5cd4cde8c8a";
+const contractAddress = "0xff147a7e96f61bd99c75aabef71ccee43051af6f";
 const insuranceAbi = require("../../abi.json");
 
 const getFormatedBalance = (balance) => {
@@ -35,6 +35,7 @@ export default function Home() {
 
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
+  const [contract, setContract] = useState(null);
 
   const [signerAddress, setSignerAddress] = useState(null);
 
@@ -54,6 +55,7 @@ export default function Home() {
   const insurableAmountRef = useRef(null);
   const insuranceDurationRef = useRef(null);
   const claimerRef = useRef(null);
+  const finalFormRef = useRef(null);
 
   const initApp = async () => {
 
@@ -63,6 +65,7 @@ export default function Home() {
     setProvider(provider);
 
     const insuranceContract = new ethers.Contract(contractAddress, insuranceAbi, provider);
+    setContract(insuranceContract);
 
     // get balances
     const insuranceCompanyBalance = getFormatedBalance(await insuranceContract.getBalance());
@@ -176,7 +179,8 @@ export default function Home() {
     if (value) {
 
       let expirityDate = new Date();
-      expirityDate.setDate(expirityDate.getDate() + timeToTimestamp[value]);
+      // add seconds to date
+      expirityDate.setSeconds(expirityDate.getSeconds() + timeToTimestamp[value]);
 
       setApplication({ ...application, duration: expirityDate });
   
@@ -188,8 +192,8 @@ export default function Home() {
           claimerRef.current.classList.remove("hidden");
           nextStepRef.current.classList.add("hidden");
         } else {
-          setApplicationTitle("Confirm insurance application");
-
+          applicationFormRef.current.classList.add("hidden");
+          finalFormRef.current.classList.remove("hidden");
         }
       }
       nextStepRef.current.classList.remove("hidden");
@@ -206,14 +210,38 @@ export default function Home() {
 
     if (value) {
       nextStepHandler = () => {
-        claimerRef.current.classList.add("hidden");
-        setApplicationTitle("Confirm insurance application");
+        applicationFormRef.current.classList.add("hidden");
+        finalFormRef.current.classList.remove("hidden");
       }
       nextStepRef.current.classList.remove("hidden");
     } else {
       nextStepHandler = null;
       nextStepRef.current.classList.add("hidden");
     }
+  }
+  const handleSubmit = async () => {
+    const { type, data, amount, duration, claimer } = application;
+
+    if (!type || !data || !amount || !duration || !claimer) {
+      alert("Some fields are missing, please reload the page and try again.");
+      return;
+    }
+
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, insuranceAbi, signer);
+
+    const dateInSecs = Math.floor(duration.getTime() / 1000);
+
+    const tx = await contract.createInsurance(type, data, dateInSecs, claimer, amount);
+    await tx.wait();
+
+    const insuranceCompanyBalance = getFormatedBalance(await contract.getBalance());
+    const insuranceLockedBalance = getFormatedBalance(await contract.getLockedBalance());
+    setBalances({ ...balances, insuranceCompanyBalance, insuranceLockedBalance });
+
+    finalFormRef.current.classList.add("hidden");
+    setApplication({});
+    alert('success');
   }
 
   useEffect(() => {
@@ -234,7 +262,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-20 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
 
-        <div className="inline-flex flex-col rounded-md shadow-sm w-full lg:static lg:w-auto lg:rounded-xl lg:border lg: bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+        <div className="inline-flex flex-col rounded-md shadow-sm w-full lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
           <a href="#" className="flex justify-between px-4 py-2 text-sm font-medium rounded-t border-gray-300 bg-gradient-to-b from-zinc-200 dark:text-white dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:bg-gray-200 lg:dark:bg-zinc-800/30 cursor-default">
             <span className="w-full">
               Insurance company balance: &nbsp;
@@ -413,6 +441,57 @@ export default function Home() {
           </div>
         </div>
 
+        <div
+          className="hidden sm:min-w-96 rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
+          ref={finalFormRef}
+        >
+        <h2 className={`text-2xl font-semibold`}>
+          Confirm insurance application
+          <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+            -&gt;
+          </span>
+        </h2>
+
+        <div className='font-mono mt-8 my-4'>
+          <div className='flex justify-between items-center my-1'>
+            <span className='
+        px-4 transition-colors z-50
+        '>Insurance type: </span><b>{insuranceTypes[application.type]}</b>
+          </div>
+          <div className='flex justify-between items-center my-1'>
+            <label className='
+        px-4 transition-colors z-50
+        '>{insuranceData[application.type]?.data}</label><b>{application.data}</b>
+          </div>
+          <div className='flex justify-between items-center my-1'>
+            <label className='
+        px-4 transition-colors z-50
+        '>Amount in XRP: </label><b>{application.amount}</b>
+          </div>
+          <div className='flex justify-between items-center my-1'>
+            <label className='
+        px-4 transition-colors z-50
+        '>Insurance duration: </label><b>{application.duration?.toLocaleDateString()}</b>
+          </div>
+          <div className='flex justify-between items-center my-1'>
+            <label className='
+        px-4 transition-colors z-50
+        '>Address of claimer in case of insurable event: </label><b>{application.claimer}</b>
+          </div>
+        </div>
+
+        <div className='flex justify-end'>
+          <button
+            onClick={handleSubmit}
+            className='
+                rounded-lg border mt-4 px-4 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer
+              '
+          >
+            Submit
+          </button>
+        </div>
+
+        </div>
 
       </div>
 
