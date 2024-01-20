@@ -9,11 +9,25 @@ import Image from "next/image";
 
 import insuranceData from './insurance.data';
 
-const contractAddress = "0xff147a7e96f61bd99c75aabef71ccee43051af6f";
+const contractAddress = "0x73078cb16de4e38d78795d4d859aba776109f968";
 const insuranceAbi = require("../../abi.json");
 
-const getFormatedBalance = (balance) => {
-  return (+ethers.utils.formatEther(balance)).toFixed(2);
+const getFormatedBalance = (balance, precision = 2) => {
+  return (+ethers.utils.formatEther(balance)).toFixed(precision);
+}
+const getFormatedDate = (unix_timestamp) => {
+  const date = new Date(unix_timestamp * 1000);
+
+  const yyyy = date.getFullYear();
+  let mm = date.getMonth() + 1; // Months start at 0!
+  let dd = date.getDate();
+
+  if (dd < 10) dd = '0' + dd;
+  if (mm < 10) mm = '0' + mm;
+
+  const formattedDate = dd + '/' + mm + '/' + yyyy;
+
+  return formattedDate;
 }
 
 let nextStepHandler = null;
@@ -30,6 +44,14 @@ const timeToTimestamp = {
   3: 360 * 24 * 60 * 60,
 }
 
+const insuranceStatus = {
+  0: 'Pending',
+  1: 'Active',
+  2: 'All amount was claimed',
+  3: 'Expired',
+  4: 'Rejected by risk'
+}
+
 
 export default function Home() {
 
@@ -41,7 +63,11 @@ export default function Home() {
 
   const [balances, setBalances] = useState({});
   const [insuranceTypes, setInsuranceTypes] = useState({});
+  const [insurances, setInsurances] = useState([]);
+  const [userInsurances, setUserInsurances] = useState([]);
   const [applicationTitle, setApplicationTitle] = useState("Insurance application");
+
+  const [timeFactor, setTimeFactor] = useState(0);
 
   const [application, setApplication] = useState({});
 
@@ -56,6 +82,7 @@ export default function Home() {
   const insuranceDurationRef = useRef(null);
   const claimerRef = useRef(null);
   const finalFormRef = useRef(null);
+  const submissionsRef = useRef(null);
 
   const initApp = async () => {
 
@@ -81,6 +108,15 @@ export default function Home() {
     }
     setInsuranceTypes({ ...insuranceTypes, ...updatedInsuranceTypes });
 
+
+    // assemble users insurances
+    const insurancesCount = await insuranceContract.getInsurancesCount();
+    const updatedInsurances = [];
+    for (let i = 0; i < insurancesCount; i++) {
+      const insuranceType = await insuranceContract.getInsurance(i);
+      updatedInsurances.push(insuranceType);
+    }
+    setInsurances(updatedInsurances);
   }
 
   const connectWallet = async () => {
@@ -178,6 +214,8 @@ export default function Home() {
 
     if (value) {
 
+      setTimeFactor(value);
+
       let expirityDate = new Date();
       // add seconds to date
       expirityDate.setSeconds(expirityDate.getSeconds() + timeToTimestamp[value]);
@@ -232,7 +270,7 @@ export default function Home() {
 
     const dateInSecs = Math.floor(duration.getTime() / 1000);
 
-    const tx = await contract.createInsurance(type, data, dateInSecs, claimer, amount);
+    const tx = await contract.createInsurance(type, data, dateInSecs, claimer, amount, { value: ethers.utils.parseUnits(`${getPrice(amount)}`, "ether") });
     await tx.wait();
 
     const insuranceCompanyBalance = getFormatedBalance(await contract.getBalance());
@@ -243,9 +281,30 @@ export default function Home() {
     setApplication({});
     alert('success');
   }
+  const handleSubmissionsButtonClick = async () => {
+    finalFormRef.current.classList.add("hidden");
+    applicationFormRef.current.classList.add("hidden");
+
+    let _userInsurances = [];
+    insurances.forEach((insurance) => {
+      if (insurance.creator == signerAddress) {
+        _userInsurances.push(insurance);
+      }
+    });
+    setUserInsurances(_userInsurances);
+
+    submissionsRef.current.classList.remove("hidden");
+  }
+
+  const getPrice = (amount) => {
+    return (amount / 25) * ((timeFactor + 1) / (40*timeFactor));
+  }
 
   useEffect(() => {
     connectWalletRef.current.classList.remove("hidden");
+    if (window.ethereum?._state?.account?.length) {
+      connectWallet();
+    }
   }, []);
 
   useEffect(() => {
@@ -262,7 +321,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-20 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
 
-        <div className="inline-flex flex-col rounded-md shadow-sm w-full lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+        <div className="inline-flex flex-col rounded-md shadow-sm w-full mb-4 lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
           <a href="#" className="flex justify-between px-4 py-2 text-sm font-medium rounded-t border-gray-300 bg-gradient-to-b from-zinc-200 dark:text-white dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:bg-gray-200 lg:dark:bg-zinc-800/30 cursor-default">
             <span className="w-full">
               Insurance company balance: &nbsp;
@@ -273,7 +332,7 @@ export default function Home() {
             <span className="w-full">
               Insurance reserved balance: &nbsp;
             </span>
-            <code className="font-mono font-bold">{balances.insuranceCompanyBalance}</code>
+            <code className="font-mono font-bold">{balances.insuranceLockedBalance}</code>
           </a>
         </div>
 
@@ -310,7 +369,7 @@ export default function Home() {
                 <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Dashboard</a>
               </li>
               <li>
-                <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Claims</a>
+                <a href="#" onClick={handleSubmissionsButtonClick} className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Claims</a>
               </li>
               <li>
                 <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Settings</a>
@@ -442,7 +501,7 @@ export default function Home() {
         </div>
 
         <div
-          className="hidden sm:min-w-96 rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
+          className="hidden sm:min-w-max rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
           ref={finalFormRef}
         >
         <h2 className={`text-2xl font-semibold`}>
@@ -471,6 +530,11 @@ export default function Home() {
           <div className='flex justify-between items-center my-1'>
             <label className='
         px-4 transition-colors z-50
+        '>Price in XRP: </label><b>{getPrice(application.amount)}</b>
+          </div>
+          <div className='flex justify-between items-center my-1'>
+            <label className='
+        px-4 transition-colors z-50
         '>Insurance duration: </label><b>{application.duration?.toLocaleDateString()}</b>
           </div>
           <div className='flex justify-between items-center my-1'>
@@ -491,6 +555,83 @@ export default function Home() {
           </button>
         </div>
 
+        </div>
+
+        <div
+          className="hidden  rounded-lg border px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30 z-50"
+          ref={submissionsRef}
+        >
+          <h2 className={`text-2xl font-semibold`}>
+            Submissions
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <div className='font-mono mt-8 my-4'>
+            {userInsurances.map((insurance, index) => {
+              return (
+                <div key={index} className='flex flex-col justify-between items-center my-3 mx-12 border'>
+
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <span className='
+        px-4 transition-colors z-50
+        '>Insurance type: </span>
+                    <b>{insuranceTypes[insurance.insuranceType]}</b>
+                  </div>
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <label className='
+        px-4 transition-colors z-50
+        '>{insuranceData[insurance.insuranceType]?.data}: </label>
+                    <b>{insurance.data}</b>
+                  </div>
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <label className='
+        px-4 transition-colors z-50
+        '>Max settlement amount: </label>
+                    <b>{getFormatedBalance(ethers.utils.parseUnits(`${insurance.maxCoverageAmount}`, 'ether'))}</b>
+                  </div>
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <label className='
+        px-4 transition-colors z-50
+        '>Premium Amount: </label>
+                    <b>{getFormatedBalance(insurance.payedAmount)}</b>
+                  </div>
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <label className='
+        px-4 transition-colors z-50
+        '>Insurance expirity date: </label>
+                    <b>{getFormatedDate(insurance.expirityDate)}</b>
+                  </div>
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <label className='
+        px-4 transition-colors z-50
+        '>Address of claimer in case of insurable event: </label>
+                    <b>{insurance.receiver}</b>
+                  </div>
+                  <hr className='w-full my-2' />
+                  <div className='flex justify-between items-center w-full my-1'>
+                    <label className='
+        px-4 transition-colors z-50
+        '>Address of claimer in case of insurable event: </label>
+                    <b>{insuranceStatus[insurance.status]}</b>
+                  </div>
+
+
+                  <div className='flex justify-end'>
+                    <button
+                      onClick={handleSubmit}
+                      className='
+                          rounded-lg border my-4 px-4 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer
+                        '
+                    >
+                      Submit a claim
+                    </button>
+                  </div>
+
+                </div>
+              )
+            })}
+          </div>
         </div>
 
       </div>
