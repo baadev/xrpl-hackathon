@@ -1,5 +1,5 @@
 ## Description:
-DApp wroten for XRLP to provide transparent insurance services.
+DApp written for XRLP to provide transparent insurance services.
 
 ## Working example:
 [xrpl.mosaica.space](https://xrpl.mosaica.space)
