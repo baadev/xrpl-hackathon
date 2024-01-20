@@ -98,7 +98,7 @@ export default function Home() {
 
     // get balances
     const insuranceCompanyBalance = getFormatedBalance(await insuranceContract.getBalance());
-    const insuranceLockedBalance = getFormatedBalance(await insuranceContract.getLockedBalance());
+    const insuranceLockedBalance = (+ethers.utils.formatEther(await insuranceContract.getLockedBalance()) * 1_000_000_000).toFixed(2);
     setBalances({ insuranceCompanyBalance, insuranceLockedBalance });
 
     // assemble insurance types
