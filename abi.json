@@ -92,6 +92,25 @@
         "inputs": [
             {
                 "indexed": false,
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "Payed",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
                 "internalType": "address",
                 "name": "",
                 "type": "address"
@@ -105,6 +124,10 @@
         ],
         "name": "Received",
         "type": "event"
+    },
+    {
+        "stateMutability": "payable",
+        "type": "fallback"
     },
     {
         "inputs": [
@@ -266,6 +289,24 @@
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "index",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "value",
+                "type": "uint256"
+            }
+        ],
+        "name": "makePayment",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {

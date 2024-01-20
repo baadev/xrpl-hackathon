@@ -7,7 +7,9 @@ import jazzicon from "@metamask/jazzicon"
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 
-const contractAddress = "0x48fcdf17ad1f5e8979fb299c6f9f5c6b5f79a32b";
+import insuranceData from './insurance.data';
+
+const contractAddress = "0x393c9fac96e4f72798da03185834a5cd4cde8c8a";
 const insuranceAbi = require("../../abi.json");
 
 const getFormatedBalance = (balance) => {
@@ -15,6 +17,19 @@ const getFormatedBalance = (balance) => {
 }
 
 let nextStepHandler = null;
+const insuranceTimeOptions = {
+  0: '1 month',
+  1: '3 months',
+  2: '6 months',
+  3: '12 months',
+}
+const timeToTimestamp = {
+  0: 30 * 24 * 60 * 60,
+  1: 90 * 24 * 60 * 60,
+  2: 180 * 24 * 60 * 60,
+  3: 360 * 24 * 60 * 60,
+}
+
 
 export default function Home() {
 
@@ -35,6 +50,10 @@ export default function Home() {
   const connectWalletRef = useRef(null);
   const applicationFormRef = useRef(null);
   const insuranceTypeRef = useRef(null);
+  const insuranceDataRef = useRef(null);
+  const insurableAmountRef = useRef(null);
+  const insuranceDurationRef = useRef(null);
+  const claimerRef = useRef(null);
 
   const initApp = async () => {
 
@@ -82,6 +101,9 @@ export default function Home() {
       userMenuRef.current.classList.add("flex");
 
       setApplicationTitle("Insurance Type");
+
+      // By default claimer is the signer
+      setApplication({ ...application, claimer: address });
     }
   }
 
@@ -100,6 +122,92 @@ export default function Home() {
     if (value) {
       nextStepHandler = () => {
         insuranceTypeRef.current.classList.add("hidden");
+        setApplicationTitle("Insurance Information");
+        insuranceDataRef.current.classList.remove("hidden");
+        nextStepRef.current.classList.add("hidden");
+      }
+      nextStepRef.current.classList.remove("hidden");
+    } else {
+      nextStepHandler = null;
+      nextStepRef.current.classList.add("hidden");
+    }
+  }
+  const handleInsuranceDataChange = (e) => {
+    const value = e.target.value;
+
+    setApplication({ ...application, data: value });
+
+    if (value) {
+      nextStepHandler = () => {
+        insuranceDataRef.current.classList.add("hidden");
+        setApplicationTitle("Insurable Amount");
+        insurableAmountRef.current.classList.remove("hidden");
+        nextStepRef.current.classList.add("hidden");
+      }
+      nextStepRef.current.classList.remove("hidden");
+    } else {
+      nextStepHandler = null;
+      nextStepRef.current.classList.add("hidden");
+    }
+  }
+  const handleInsurableAmountChange = (e) => {
+    const value = e.target.value;
+
+    setApplication({ ...application, amount: value });
+
+    if (value) {
+      nextStepHandler = () => {
+        insurableAmountRef.current.classList.add("hidden");
+        setApplicationTitle("Insurance Duration");
+        insuranceDurationRef.current.classList.remove("hidden");
+        nextStepRef.current.classList.add("hidden");
+      }
+      nextStepRef.current.classList.remove("hidden");
+    } else {
+      nextStepHandler = null;
+      nextStepRef.current.classList.add("hidden");
+    }
+  }
+  const handleInsuranceDurationChange = (e) => {
+    const value = e.target.value;
+
+    setApplication({ ...application, duration: value });
+
+    if (value) {
+
+      let expirityDate = new Date();
+      expirityDate.setDate(expirityDate.getDate() + timeToTimestamp[value]);
+
+      setApplication({ ...application, duration: expirityDate });
+  
+      nextStepHandler = () => {
+        insuranceDurationRef.current.classList.add("hidden");
+
+        if (application.type == 1) {
+          setApplicationTitle("Claimer Address");
+          claimerRef.current.classList.remove("hidden");
+          nextStepRef.current.classList.add("hidden");
+        } else {
+          setApplicationTitle("Confirm insurance application");
+
+        }
+      }
+      nextStepRef.current.classList.remove("hidden");
+    } else {
+      nextStepHandler = null;
+      nextStepRef.current.classList.add("hidden");
+      setApplication({ ...application, expirityDate: null });
+    }
+  }
+  const handleClaimerChange = (e) => {
+    const value = e.target.value;
+
+    setApplication({ ...application, claimer: value });
+
+    if (value) {
+      nextStepHandler = () => {
+        claimerRef.current.classList.add("hidden");
+        setApplicationTitle("Confirm insurance application");
       }
       nextStepRef.current.classList.remove("hidden");
     } else {
@@ -212,6 +320,7 @@ export default function Home() {
               -&gt;
             </span>
           </h2>
+
           <div
             ref={insuranceTypeRef}
           >
@@ -228,6 +337,67 @@ export default function Home() {
                 );
               })}
             </select>
+          </div>
+
+          <div
+            className='hidden'
+            ref={insuranceDataRef}
+          >
+            <div className='flex '>
+              <label className='
+              mt-4 px-4 py-2 transition-colors z-50
+              '>{insuranceData[application.type]?.data}</label>
+              <input className='
+              rounded-lg border mt-4 px-4 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer
+              ' onChange={handleInsuranceDataChange}></input>
+            </div>
+          </div>
+
+          <div
+            className='hidden'
+            ref={insurableAmountRef}
+          >
+            <div className='flex '>
+              <label className='
+              mt-4 px-4 py-2 transition-colors z-50
+              '>Amount in XRP: </label>
+              <input className='
+              rounded-lg border mt-4 px-4 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer
+              ' onChange={handleInsurableAmountChange}></input>
+            </div>
+          </div>
+
+          <div
+            className='hidden'
+            ref={insuranceDurationRef}
+          >
+            <select
+              className="mt-4 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              onChange={handleInsuranceDurationChange}
+            >
+              <option defaultValue>Choose insurance duration time</option>
+              {Object.keys(insuranceTimeOptions).map((key) => {
+                return (
+                  <option key={key} value={key}>
+                    {insuranceTimeOptions[key]}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div
+            className='hidden'
+            ref={claimerRef}
+          >
+            <div className='flex '>
+              <label className='
+              mt-4 px-4 py-2 transition-colors z-50
+              '>Address of claimer in case of insurable event: </label>
+              <input className='
+              rounded-lg border mt-4 px-4 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30 z-50 cursor-pointer
+              ' onChange={handleClaimerChange}></input>
+            </div>
           </div>
 
           <div className='flex justify-end'>
